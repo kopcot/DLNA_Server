@@ -48,16 +48,16 @@ namespace DLNAServer.Features.MediaProcessors
                     throw new NotImplementedException($"Undefined {nameof(OperatingSystem)}");
                 }
 
-                var ffmpeg = files.FirstOrDefault(f => f.Name.Equals(ffmpegFileName, StringComparison.InvariantCultureIgnoreCase));
-                var ffprobe = files.FirstOrDefault(f => f.Name.Equals(ffprobeFileName, StringComparison.InvariantCultureIgnoreCase));
+                var ffmpeg = files.FirstOrDefault(f => f.Name.Equals(ffmpegFileName, StringComparison.OrdinalIgnoreCase));
+                var ffprobe = files.FirstOrDefault(f => f.Name.Equals(ffprobeFileName, StringComparison.OrdinalIgnoreCase));
                 var isDownloaded = ffmpeg != null && ffprobe != null;
 
                 if (!isDownloaded)
                 {
                     await FFmpegDownloader.GetLatestVersion(FFmpegVersion.Official, executablesPath).WaitAsync(TimeSpanValues.TimeMin15);
                     files = directoryInfo.EnumerateFiles();
-                    ffmpeg = files.First(f => f.Name.Equals(ffmpegFileName, StringComparison.InvariantCultureIgnoreCase));
-                    ffprobe = files.First(f => f.Name.Equals(ffprobeFileName, StringComparison.InvariantCultureIgnoreCase));
+                    ffmpeg = files.First(f => f.Name.Equals(ffmpegFileName, StringComparison.OrdinalIgnoreCase));
+                    ffprobe = files.First(f => f.Name.Equals(ffprobeFileName, StringComparison.OrdinalIgnoreCase));
                 }
 
                 FFmpeg.SetExecutablesPath(executablesPath, ffmpeg!.Name, ffprobe!.Name);
@@ -82,6 +82,9 @@ namespace DLNAServer.Features.MediaProcessors
             catch (ArgumentException ex)
             {
                 LogErrorFFmpegGetMediaInfo(ex.Message);
+
+                await Task.Delay(TimeSpanValues.TimeSecs1, cancellationToken);
+
                 return null;
             }
         }

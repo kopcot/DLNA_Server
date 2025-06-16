@@ -30,10 +30,13 @@
             "Get directory by ObjectID: {getDirectory,6:0.00}(ms), " +
             "Get files in directory: {getFilesInDirectory,6:0.00}(ms), " +
             "Refresh found files from directory: {refreshFoundFilesInDirectory,6:0.00}(ms), " +
+            "Check parent directories: {checkParentDirectories,6:0.00}(ms), " +
             "Get data from database: {getDataFromDatabase,6:0.00}(ms), " +
+            "Sort data from database: {sortDataFromDatabase,6:0.00}(ms), " +
             "Add additional data from database: {addAdditionalDataFromDatabase,6:0.00}(ms), " +
             "Filter data: {filterData,6:0.00}(ms), " +
             "Check files: {checkFiles,6:0.00}(ms), " +
+            "Check directories: {checkDirectories,6:0.00}(ms), " +
             "Fill empty data: {fillEmptyData,6:0.00}(ms), " +
             "Total duration (ms): {totalDuration,6:0.00}(ms), " +
             "Directory: {directory}")]
@@ -44,14 +47,19 @@
             double getDirectory,
             double getFilesInDirectory,
             double refreshFoundFilesInDirectory,
+            double checkParentDirectories,
             double getDataFromDatabase,
+            double sortDataFromDatabase,
             double addAdditionalDataFromDatabase,
             double filterData,
             double checkFiles,
+            double checkDirectories,
             double fillEmptyData,
             double totalDuration,
             string? directory);
         [LoggerMessage(10, LogLevel.Warning, "No any thumbnail file stored path full name in database. No thumbnail file will be deleted. File in database checked: {fileEntityCount}")]
         partial void WarningNoAnyThumbnailFile(int fileEntityCount);
+        [LoggerMessage(11, LogLevel.Information, "Updated parent directories for {fileEntitiesCount} file(s) and {directoryEntitiesCount} directory(ies).")]
+        partial void InformationUpdatedParentDirectories(int fileEntitiesCount, int directoryEntitiesCount);
     }
 }

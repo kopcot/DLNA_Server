@@ -94,7 +94,6 @@ namespace DLNAServer.Features.Cache
                 {
                     return (false, ReadOnlyMemory<byte>.Empty);
                 }
-                GC.AddMemoryPressure(cachedData.Value.Length);
 
                 CacheFileData(filePath, slidingExpiration, cachedData.Value);
 
@@ -166,7 +165,7 @@ namespace DLNAServer.Features.Cache
                 AbsoluteExpirationRelativeToNow = TimeSpanValues.TimeHours12,
                 Priority = CacheItemPriority.Low,
             }
-            .RegisterPostEvictionCallback((key, value, reason, state) =>
+            .RegisterPostEvictionCallback((key, _, _, _) =>
             {
                 MemoryCache.CancelCacheKeyEviction((string)key, _logger);
 
@@ -177,7 +176,6 @@ namespace DLNAServer.Features.Cache
                     _ = await postEvictionCallbackInProgress.WaitAsync(TimeSpanValues.TimeMin30);
 
                     GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
-                    GC.RemoveMemoryPressure(size);
                     GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced);
                     GC.WaitForPendingFinalizers();
                     GC.Collect();
@@ -185,11 +183,10 @@ namespace DLNAServer.Features.Cache
                     await Task.Delay(TimeSpanValues.TimeSecs1);
 
                     _ = postEvictionCallbackInProgress.Release();
-
                 });
                 clearMemory.Start();
             });
-        } 
+        }
         public void EvictSingleFile(string filePath)
         {
             try

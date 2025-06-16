@@ -93,7 +93,7 @@ namespace DLNAServer.Features.MediaProcessors
                         0,
                         fileEntities.Length,
                         parallelOptions: new() { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-                        async (index, cancellationToken) =>
+                        async (index, _) =>
                         {
                             var file = fileEntities.Span[index];
 
@@ -168,7 +168,7 @@ namespace DLNAServer.Features.MediaProcessors
                         0,
                         fileEntities.Length,
                         parallelOptions: new() { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-                        async (index, cancellationToken) =>
+                        async (index, _) =>
                         {
                             var file = fileEntities.Span[index];
 
@@ -189,7 +189,9 @@ namespace DLNAServer.Features.MediaProcessors
             var audioMetadata = await GetFileMetadataAsync(file);
             file.AudioMetadata = audioMetadata;
             if (audioMetadata != null ||
-               (setCheckedForFailed && audioMetadata == null))
+               (setCheckedForFailed &&
+                    audioMetadata == null &&
+                    (DateTime.Now - file.CreatedInDB) > TimeSpanValues.TimeHours12))
             {
                 file.IsMetadataChecked = true;
 
@@ -216,7 +218,7 @@ namespace DLNAServer.Features.MediaProcessors
                     if (await FFmpegService.TryGetMediaInfo(fileEntity.FilePhysicalFullPath, cancellationTokenSource.Token) is IMediaInfo mediaInfo)
                     {
                         fileEntity.FileSizeInBytes = mediaInfo.Size;
-                        return (ExtractAudioMetadataAsync(ref mediaInfo));
+                        return ExtractAudioMetadata(ref mediaInfo);
                     }
                     return null;
                 }
@@ -227,7 +229,7 @@ namespace DLNAServer.Features.MediaProcessors
                 return null;
             }
         }
-        private MediaAudioEntity? ExtractAudioMetadataAsync(ref IMediaInfo mediaInfo)
+        private MediaAudioEntity? ExtractAudioMetadata(ref IMediaInfo mediaInfo)
         {
             try
             {
@@ -282,14 +284,14 @@ namespace DLNAServer.Features.MediaProcessors
                     });
 
                 var bufferMemory = bufferArray.AsMemory(0, count);
-                await RefreshThumbnailsAsync(bufferMemory, setCheckedForFailed);
+                await RefreshThumbnailsAsync(bufferMemory);
             }
             finally
             {
                 poolFileEntity.Return(bufferArray, clearArray: true);
             }
         }
-        private async Task RefreshThumbnailsAsync(ReadOnlyMemory<FileEntity> fileEntities, bool setCheckedForFailed = true)
+        private async Task RefreshThumbnailsAsync(ReadOnlyMemory<FileEntity> fileEntities)
         {
             try
             {

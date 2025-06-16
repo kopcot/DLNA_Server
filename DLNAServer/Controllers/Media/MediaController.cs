@@ -9,7 +9,7 @@ namespace DLNAServer.Controllers.Media
 {
     [Route("[controller]")]
     [ApiController]
-    public class MediaController : Controller
+    public class MediaController : ControllerBase
     {
         private readonly ILogger<MediaController> _logger;
         private readonly ServerConfig _serverConfig;

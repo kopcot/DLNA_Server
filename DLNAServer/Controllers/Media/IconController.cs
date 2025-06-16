@@ -9,17 +9,16 @@ namespace DLNAServer.Controllers.Media
 {
     [Route("[controller]")]
     [ApiController]
-    public partial class IconController : Controller
+    public partial class IconController : ControllerBase
     {
         private readonly ILogger<IconController> _logger;
-        private readonly Lazy<IFileMemoryCacheManager> _fileMemoryCacheLazy;
-        private IFileMemoryCacheManager FileMemoryCache => _fileMemoryCacheLazy.Value;
+        private readonly IFileMemoryCacheManager FileMemoryCache;
         public IconController(
             ILogger<IconController> logger,
-            Lazy<IFileMemoryCacheManager> fileMemoryCacheLazy)
+            IFileMemoryCacheManager fileMemoryCache)
         {
             _logger = logger;
-            _fileMemoryCacheLazy = fileMemoryCacheLazy;
+            FileMemoryCache = fileMemoryCache;
         }
         [HttpGet("{fileName}")]
         public async Task<IActionResult> GetIconFile([FromRoute] string fileName)

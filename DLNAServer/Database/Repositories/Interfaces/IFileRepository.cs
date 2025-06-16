@@ -7,7 +7,8 @@ namespace DLNAServer.Database.Repositories.Interfaces
         Task<ReadOnlyMemory<FileEntity>> GetAllByAddedToDbAsync(int takeNumber, IEnumerable<string> excludeFolders, bool useCachedResult = true);
         Task<ReadOnlyMemory<FileEntity>> GetAllByParentDirectoryIdsAsync(IEnumerable<Guid> expectedDirectories, IEnumerable<string> excludeFolders, bool useCachedResult = true);
         Task<ReadOnlyMemory<FileEntity>> GetAllByParentDirectoryIdsAsync(IEnumerable<string> expectedDirectories, IEnumerable<string> excludeFolders, bool useCachedResult = true);
-        Task<ReadOnlyMemory<string>> GetAllFileFullNamesAsync(bool useCachedResult = true);
+        Task<ReadOnlyMemory<FileEntity>> GetAllWithEmptyParentDirectoryIdsAsync(string pathFullName, IEnumerable<string> excludeFolders, bool useCachedResult = true);
+        Task<ReadOnlyMemory<string>> GetAllFileFullNamesAsync(string? filterExtension = null, bool useCachedResult = true);
         Task<(bool ok, int? minDepth)> GetMinimalDepthAsync(bool useCachedResult = true);
         Task<ReadOnlyMemory<FileEntity>> GetAllByDirectoryDepthAsync(int depth, bool useCachedResult = true);
         Task<ReadOnlyMemory<FileEntity>> GetAllByDirectoryDepthAsync(int depth, int skip, int take, bool useCachedResult = true);

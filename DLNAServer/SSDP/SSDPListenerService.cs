@@ -1,5 +1,7 @@
-﻿using DLNAServer.Common;
+﻿using CommunityToolkit.HighPerformance;
+using DLNAServer.Common;
 using DLNAServer.Configuration;
+using DLNAServer.Helpers.Database;
 using DLNAServer.Helpers.Logger;
 using DLNAServer.Types.IP.Interfaces;
 using DLNAServer.Types.UPNP;
@@ -133,19 +135,20 @@ namespace DLNAServer.SSDP
             }
         }
 
-        private async Task<bool> HandleSearchRequestAsync(string message, IPEndPoint remoteEndPoint, UPNPDevice[] upnpDevices)
+        private async Task<bool> HandleSearchRequestAsync(string message, IPEndPoint remoteEndPoint, ReadOnlyMemory<UPNPDevice> upnpDevices)
         {
             var headers = message.Split(Environment.NewLine);
             var searchTarget = headers.FirstOrDefault(static (h) => h.StartsWith("ST:"));
-            var devicesEndpoint = upnpDevices.GroupBy(static (d) => d.Endpoint);
+            var devicesEndpoint = upnpDevices.AsArray().GroupBy(static (d) => d.Endpoint).ToArray();
 
             bool isMessageSend = true;
 
-            foreach (var devices in devicesEndpoint)
+            for (int i = 0; i < devicesEndpoint.Length; i++)
             {
+                IGrouping<IPEndPoint, UPNPDevice>? devices = devicesEndpoint[i];
                 if (!_udpClientSenders.TryGetValue(devices.Key, out var udpClient))
                 {
-                    udpClient = new UdpClient();
+                    udpClient = new();
                     udpClient.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
                     udpClient.ExclusiveAddressUse = false;
                     udpClient.Client.Bind(devices.Key);
@@ -154,8 +157,9 @@ namespace DLNAServer.SSDP
 
                     _udpClientSenders.Add(devices.Key, udpClient);
                 }
-                foreach (var device in devices)
+                for (int i1 = 0; i1 < devices.Count(); i1++)
                 {
+                    UPNPDevice? device = devices.ElementAt(i1);
                     // Check the "ST" (Search Target) header to determine what the client is looking for
                     if (searchTarget != null &&
                        !searchTarget.Contains(device.Type, StringComparison.CurrentCultureIgnoreCase))

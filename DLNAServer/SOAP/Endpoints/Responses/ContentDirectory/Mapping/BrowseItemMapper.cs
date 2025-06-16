@@ -13,16 +13,16 @@ namespace DLNAServer.SOAP.Endpoints.Responses.ContentDirectory.Mapping
         {
             return new BrowseItem()
             {
-                Title = GetTitle(ref directory, isRootFolder),
-                ObjectID = GetObjectID(ref directory),
-                ParentID = GetParentID(ref directory, isRootFolder),
-                Class = GetUpnpClass(ref directory),
-                ThumbnailUri = GetThumbnailUri(ref directory, ipEndpoint),
-                Icon = GetThumbnailUri(ref directory, ipEndpoint),
+                Title = GetTitle(directory, isRootFolder),
+                ObjectID = GetObjectID(directory),
+                ParentID = GetParentID(directory, isRootFolder),
+                Class = GetUpnpClass(directory),
+                ThumbnailUri = GetThumbnailUri(directory, ipEndpoint),
+                Icon = GetThumbnailUri(directory, ipEndpoint),
                 Searchable = "1",
             };
         }
-        private static string GetTitle(ref readonly DirectoryEntity directory, bool isRootFolder)
+        private static string GetTitle(DirectoryEntity directory, bool isRootFolder)
         {
             StringBuilder sb = new();
             if (isRootFolder)
@@ -41,10 +41,10 @@ namespace DLNAServer.SOAP.Endpoints.Responses.ContentDirectory.Mapping
         }
 
         //TODO
-        private static string GetUpnpClass(ref readonly DirectoryEntity directory) => DlnaItemClass.Container.ToItemClass();
-        private static string GetObjectID(ref readonly DirectoryEntity directory) => directory.Id.ToString();
-        private static string GetParentID(ref readonly DirectoryEntity directory, bool isRootFolder) => isRootFolder ? rootParentId : directory.ParentDirectory?.Id.ToString() ?? rootParentId;
-        private static string GetThumbnailUri(ref readonly DirectoryEntity directory, string ipEndpoint)
+        private static string GetUpnpClass(DirectoryEntity directory) => DlnaItemClass.Container.ToItemClass();
+        private static string GetObjectID(DirectoryEntity directory) => directory.Id.ToString();
+        private static string GetParentID(DirectoryEntity directory, bool isRootFolder) => isRootFolder ? rootParentId : directory.ParentDirectoryId?.ToString() ?? rootParentId;
+        private static string GetThumbnailUri(DirectoryEntity directory, string ipEndpoint)
         {
             StringBuilder sb = new(50);
             return sb.Append("http://")
@@ -58,41 +58,40 @@ namespace DLNAServer.SOAP.Endpoints.Responses.ContentDirectory.Mapping
         {
             return new BrowseItem()
             {
-                Title = GetTitle(ref file, isRootFolder),
-                ObjectID = GetObjectID(ref file),
-                ParentID = GetParentID(ref file, isRootFolder),
-                Class = GetUpnpClass(ref file),
-                ThumbnailUri = GetResourceThumbnailUrl(ref file, ipEndpoint),
-                Icon = GetResourceThumbnailUrl(ref file, ipEndpoint),
-                Date = GetDate(ref file),
-                VideoCodec = GetVideoCodec(ref file),
-                AudioCodec = GetAudioCodec(ref file),
+                Title = GetTitle(file, isRootFolder),
+                ObjectID = GetObjectID(file),
+                ParentID = GetParentID(file, isRootFolder),
+                Class = GetUpnpClass(file),
+                ThumbnailUri = GetResourceThumbnailUrl(file, ipEndpoint),
+                Icon = GetResourceThumbnailUrl(file, ipEndpoint),
+                Date = GetDate(file),
+                VideoCodec = GetVideoCodec(file),
+                AudioCodec = GetAudioCodec(file),
                 Resource =
                 [
                     new()
                     {
-                        ProtocolInfo = GetResourceProtocolInfo(ref file),
-                        Url = GetResourceUrl(ref file, ipEndpoint),
-                        SizeInBytes = GetResourceSize(ref file),
-                        Duration = GetResourceDuration(ref file),
-                        Resolution = GetResourceResolution(ref file),
-                        Bitrate = GetResourceBitrate(ref file),
-                        AudioChannels = GetAudioChannels(ref file),
-                        TypeOfMedia =  GetTypeOfMedia(ref file),
+                        ProtocolInfo = GetResourceProtocolInfo(file),
+                        Url = GetResourceUrl(file, ipEndpoint),
+                        SizeInBytes = GetResourceSize(file),
+                        Duration = GetResourceDuration(file),
+                        Resolution = GetResourceResolution(file),
+                        Bitrate = GetResourceBitrate(file),
+                        AudioChannels = GetAudioChannels(file),
+                        TypeOfMedia =  GetTypeOfMedia(file),
                     }
                 ],
-                ResourceThumbnail = GetResourceThumbnailUrl(ref file, ipEndpoint) == null ? null
+                ResourceThumbnail = GetResourceThumbnailUrl(file, ipEndpoint) == null ? null
                     : new()
                     {
-                        ProtocolInfo = GetResourceThumbnailProtocolInfo(ref file),
-                        Url = GetResourceThumbnailUrl(ref file, ipEndpoint)!,
-                        SizeInBytes = GetResourceThumbnailSize(ref file),
+                        ProtocolInfo = GetResourceThumbnailProtocolInfo(file),
+                        Url = GetResourceThumbnailUrl(file, ipEndpoint)!,
+                        SizeInBytes = GetResourceThumbnailSize(file),
                     }
             };
         }
-        private static string GetTitle(ref readonly FileEntity file, bool isRootFolder)
+        private static string GetTitle(FileEntity file, bool isRootFolder)
         {
-
             StringBuilder sb = new();
             if (isRootFolder)
             {
@@ -109,11 +108,11 @@ namespace DLNAServer.SOAP.Endpoints.Responses.ContentDirectory.Mapping
             }
         }
 
-        private static string GetUpnpClass(ref readonly FileEntity file) => file.UpnpClass.ToItemClass();
-        private static string GetObjectID(ref readonly FileEntity file) => file.Id.ToString();
-        private static string GetParentID(ref readonly FileEntity file, bool isRootFolder) => isRootFolder ? rootParentId : file.Directory?.Id.ToString() ?? rootParentId;
-        private static string GetDate(ref readonly FileEntity file) => file.FileCreateDate.ToString("O");
-        private static string GetResourceUrl(ref readonly FileEntity file, string ipEndpoint)
+        private static string GetUpnpClass(FileEntity file) => file.UpnpClass.ToItemClass();
+        private static string GetObjectID(FileEntity file) => file.Id.ToString();
+        private static string GetParentID(FileEntity file, bool isRootFolder) => isRootFolder ? rootParentId : file.DirectoryId?.ToString() ?? rootParentId;
+        private static string GetDate(FileEntity file) => file.FileCreateDate.ToString("O");
+        private static string GetResourceUrl(FileEntity file, string ipEndpoint)
         {
             StringBuilder sb = new(50);
             return sb.Append("http://")
@@ -123,7 +122,7 @@ namespace DLNAServer.SOAP.Endpoints.Responses.ContentDirectory.Mapping
                 .ToString();
         }
 
-        private static string GetResourceProtocolInfo(ref readonly FileEntity file)
+        private static string GetResourceProtocolInfo(FileEntity file)
         {
             StringBuilder sb = new(50);
             _ = sb.Append("http-get:*:")
@@ -145,7 +144,7 @@ namespace DLNAServer.SOAP.Endpoints.Responses.ContentDirectory.Mapping
                     : ProtocolInfo.DefaultFlagsStreaming);
             return sb.ToString();
         }
-        private static string? GetResourceThumbnailUrl(ref readonly FileEntity file, string ipEndpoint)
+        private static string? GetResourceThumbnailUrl(FileEntity file, string ipEndpoint)
         {
             var sb = new StringBuilder(50);
 
@@ -171,7 +170,7 @@ namespace DLNAServer.SOAP.Endpoints.Responses.ContentDirectory.Mapping
                 };
             }
         }
-        private static string GetResourceThumbnailProtocolInfo(ref readonly FileEntity file)
+        private static string GetResourceThumbnailProtocolInfo(FileEntity file)
         {
             StringBuilder sb = new();
             _ = sb.Append("http-get:*:")
@@ -195,9 +194,9 @@ namespace DLNAServer.SOAP.Endpoints.Responses.ContentDirectory.Mapping
                 .Append(ProtocolInfo.DefaultFlagsInteractive);
             return sb.ToString();
         }
-        private static long GetResourceSize(ref readonly FileEntity file) => file.FileSizeInBytes;
-        private static long GetResourceThumbnailSize(ref readonly FileEntity file) => file.Thumbnail?.ThumbnailFileSizeInBytes ?? 0;
-        private static string? GetResourceDuration(ref readonly FileEntity file)
+        private static long GetResourceSize(FileEntity file) => file.FileSizeInBytes;
+        private static long GetResourceThumbnailSize(FileEntity file) => file.Thumbnail?.ThumbnailFileSizeInBytes ?? 0;
+        private static string? GetResourceDuration(FileEntity file)
         {
             return file.UpnpClass.ToDlnaMedia() switch
             {
@@ -223,7 +222,7 @@ namespace DLNAServer.SOAP.Endpoints.Responses.ContentDirectory.Mapping
                 return sb.ToString();
             }
         }
-        private static string? GetResourceResolution(ref readonly FileEntity file)
+        private static string? GetResourceResolution(FileEntity file)
         {
             switch (file.UpnpClass.ToDlnaMedia())
             {
@@ -244,7 +243,7 @@ namespace DLNAServer.SOAP.Endpoints.Responses.ContentDirectory.Mapping
             }
             return null;
         }
-        private static string? GetResourceBitrate(ref readonly FileEntity file)
+        private static string? GetResourceBitrate(FileEntity file)
         {
             switch (file.UpnpClass.ToDlnaMedia())
             {
@@ -269,7 +268,7 @@ namespace DLNAServer.SOAP.Endpoints.Responses.ContentDirectory.Mapping
             }
             return null;
         }
-        private static string? GetVideoCodec(ref readonly FileEntity file)
+        private static string? GetVideoCodec(FileEntity file)
         {
             switch (file.UpnpClass.ToDlnaMedia())
             {
@@ -285,7 +284,7 @@ namespace DLNAServer.SOAP.Endpoints.Responses.ContentDirectory.Mapping
             }
             return null;
         }
-        private static string? GetAudioCodec(ref readonly FileEntity file)
+        private static string? GetAudioCodec(FileEntity file)
         {
             switch (file.UpnpClass.ToDlnaMedia())
             {
@@ -310,7 +309,7 @@ namespace DLNAServer.SOAP.Endpoints.Responses.ContentDirectory.Mapping
             }
             return null;
         }
-        private static string? GetAudioChannels(ref readonly FileEntity file)
+        private static string? GetAudioChannels(FileEntity file)
         {
             switch (file.UpnpClass.ToDlnaMedia())
             {
@@ -335,7 +334,7 @@ namespace DLNAServer.SOAP.Endpoints.Responses.ContentDirectory.Mapping
             }
             return null;
         }
-        private static string? GetTypeOfMedia(ref readonly FileEntity file)
+        private static string? GetTypeOfMedia(FileEntity file)
         {
             switch (file.UpnpClass.ToDlnaMedia())
             {

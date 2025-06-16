@@ -97,7 +97,7 @@ namespace DLNAServer.Features.MediaProcessors
                         0,
                         fileEntities.Length,
                         parallelOptions: new() { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-                        async (index, cancellationToken) =>
+                        async (index, _) =>
                         {
                             var file = fileEntities.Span[index];
 
@@ -140,14 +140,14 @@ namespace DLNAServer.Features.MediaProcessors
                     });
 
                 var bufferMemory = bufferArray.AsMemory(0, count);
-                await RefreshMetadataAsync(bufferMemory, setCheckedForFailed);
+                await RefreshMetadataAsync(bufferMemory);
             }
             finally
             {
                 poolFileEntity.Return(bufferArray, clearArray: true);
             }
         }
-        private async Task RefreshMetadataAsync(ReadOnlyMemory<FileEntity> fileEntities, bool setCheckedForFailed = true)
+        private async Task RefreshMetadataAsync(ReadOnlyMemory<FileEntity> fileEntities)
         {
             try
             {
@@ -170,7 +170,7 @@ namespace DLNAServer.Features.MediaProcessors
                         0,
                         fileEntities.Length,
                         parallelOptions: new() { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-                        (index, cancellationToken) =>
+                        (index, _) =>
                         {
                             var file = fileEntities.Span[index];
 
@@ -239,7 +239,7 @@ namespace DLNAServer.Features.MediaProcessors
                         0,
                         fileEntities.Length,
                         parallelOptions: new() { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-                        async (index, cancellationToken) =>
+                        async (index, _) =>
                         {
                             var file = fileEntities.Span[index];
 
@@ -286,7 +286,8 @@ namespace DLNAServer.Features.MediaProcessors
 
                     InformationSetThumbnail(file.FilePhysicalFullPath);
                 }
-                else if (setCheckedForFailed)
+                else if (setCheckedForFailed &&
+                    (DateTime.Now - file.CreatedInDB) > TimeSpanValues.TimeHours12)
                 {
                     file.IsThumbnailChecked = true;
 
@@ -321,8 +322,7 @@ namespace DLNAServer.Features.MediaProcessors
                 FileInfo thumbnailFile = new(outputThumbnailFileFullPath);
                 if (!thumbnailFile.Exists)
                 {
-                    await using (FileStream fileStream = new(fileEntity.FilePhysicalFullPath, FileMode.Open, FileAccess.Read, FileShare.Read))
-                    using (var codec = SKCodec.Create(fileStream, out var result))
+                    using (var codec = SKCodec.Create(fileEntity.FilePhysicalFullPath, out var result))
                     {
                         if (codec == null || result != SKCodecResult.Success)
                         {
@@ -339,18 +339,11 @@ namespace DLNAServer.Features.MediaProcessors
 
                     DirectoryHelper.CreateDirectoryIfNoExists(thumbnailFile.Directory);
 
-                    await using (FileStream fileStream = new(
-                        path: fileEntity.FilePhysicalFullPath,
-                        mode: FileMode.Open,
-                        access: FileAccess.Read,
-                        share: FileShare.Read,
-                        bufferSize: 64 * 1024,
-                        options: FileOptions.SequentialScan | FileOptions.Asynchronous))
-                    using (SKBitmap sourceBitmap = SKBitmap.Decode(fileStream))
+                    using (SKBitmap sourceBitmap = SKBitmap.Decode(fileEntity.FilePhysicalFullPath))
                     using (SKBitmap resizedBitmap = sourceBitmap.Resize(new SKImageInfo(newWidth, newHeight), samplingOptions))
                     using (SKData data = resizedBitmap.Encode(imageFormat, (int)_serverConfig.QualityForThumbnails))
                     {
-                        using (FileStream fileStreamThumbnailFile = new(
+                        await using (FileStream fileStreamThumbnailFile = new(
                             path: outputThumbnailFileFullPath,
                             mode: FileMode.Create,
                             access: FileAccess.Write,

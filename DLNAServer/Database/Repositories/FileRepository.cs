@@ -67,8 +67,8 @@ namespace DLNAServer.Database.Repositories
             var memoryDataResult = GetAllWithCacheAsync(
                 queryAction: DbSet
                     .OrderByDescending(static (f) => f.CreatedInDB)
+                    .Where(fe => exclude.All(ef => !EF.Functions.Collate(fe.LC_FilePhysicalFullPath, "NOCASE").Contains(ef)))
                     .IncludeChildEntities(DefaultInclude)
-                    .Where(fe => exclude.All(ef => !fe.LC_FilePhysicalFullPath.Contains(ef)))
                     .Take(takeNumber),
                 cacheKey: GetCacheKey<FileEntity[]>([takeNumber.ToString()]),
                 cacheDuration: defaultCacheDuration,
@@ -78,15 +78,16 @@ namespace DLNAServer.Database.Repositories
         }
         public Task<ReadOnlyMemory<FileEntity>> GetAllByParentDirectoryIdsAsync(IEnumerable<Guid> expectedDirectories, IEnumerable<string> excludeFolders, bool useCachedResult = true)
         {
+            var expectedDirectorySet = expectedDirectories as ICollection<Guid> ?? expectedDirectories.ToHashSet();
             var exclude = excludeFolders.Select(static (ef) => ef.ToLower(culture: System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+
             var memoryDataResult = GetAllWithCacheAsync(
                 queryAction: DbSet
-                    .OrderEntitiesByDefault(DefaultOrderBy)
+                    .Where(fe => fe.DirectoryId != null
+                        && expectedDirectorySet.Contains(fe.DirectoryId.Value)
+                        && exclude.All(ef => !EF.Functions.Collate(fe.LC_FilePhysicalFullPath, "NOCASE").Contains(ef)))
                     .IncludeChildEntities(DefaultInclude)
-                    .Where(fe => fe.Directory != null
-                        //&& expectedDirectories.Any(guid => guid == fe.Directory.Id)
-                        && expectedDirectories.Contains(fe.Directory.Id)
-                        && exclude.All(ef => !fe.LC_FilePhysicalFullPath.Contains(ef))),
+                    .OrderEntitiesByDefault(DefaultOrderBy),
                 cacheKey: GetCacheKey<FileEntity[]>(expectedDirectories.Select(static (ed) => ed.ToString())),
                 cacheDuration: defaultCacheDuration,
                 useCachedResult: useCachedResult
@@ -97,14 +98,39 @@ namespace DLNAServer.Database.Repositories
         {
             return GetAllByParentDirectoryIdsAsync(expectedDirectories.Select(static (ed) => Guid.TryParse(ed, out var dbGuid) ? dbGuid : Guid.Empty), excludeFolders, useCachedResult);
         }
-        public Task<ReadOnlyMemory<string>> GetAllFileFullNamesAsync(bool useCachedResult = true)
+        public Task<ReadOnlyMemory<FileEntity>> GetAllWithEmptyParentDirectoryIdsAsync(string pathFullName, IEnumerable<string> excludeFolders, bool useCachedResult = true)
         {
+            pathFullName = pathFullName.ToLower(culture: System.Globalization.CultureInfo.InvariantCulture);
+            var exclude = excludeFolders.Select(static (ef) => ef.ToLower(culture: System.Globalization.CultureInfo.InvariantCulture)).ToArray();
             var memoryDataResult = GetAllWithCacheAsync(
                 queryAction: DbSet
-                    .OrderEntitiesByDefault(DefaultOrderBy)
-                    .AsNoTracking()
-                    .Select(static (f) => f.FilePhysicalFullPath),
-                cacheKey: GetCacheKey<string[]>(methodName: nameof(GetAllFileFullNamesAsync)),
+                    .IncludeChildEntities(DefaultInclude)
+                    .Where(fe => fe.DirectoryId == null
+                        && fe.LC_FilePhysicalFullPath.StartsWith(pathFullName)
+                        && exclude.All(ef => !EF.Functions.Collate(fe.LC_FilePhysicalFullPath, "NOCASE").Contains(ef)))
+                    .OrderEntitiesByDefault(DefaultOrderBy),
+                cacheKey: GetCacheKey<FileEntity[]>(excludeFolders.Select(static (ed) => ed.ToString()).Union([pathFullName])),
+                cacheDuration: defaultCacheDuration,
+                useCachedResult: useCachedResult
+                );
+            return memoryDataResult;
+        }
+        public Task<ReadOnlyMemory<string>> GetAllFileFullNamesAsync(string? filterExtension = null, bool useCachedResult = true)
+        {
+            var query = DbSet
+                    .AsNoTracking();
+            if (!string.IsNullOrWhiteSpace(filterExtension))
+            {
+                filterExtension = filterExtension.ToLower(culture: System.Globalization.CultureInfo.InvariantCulture);
+                query = query
+                    .Where(f => EF.Functions.Collate(f.LC_FileExtension, "NOCASE").Equals(filterExtension));
+            }
+            query = query
+                    .OrderEntitiesByDefault(DefaultOrderBy);
+            var memoryDataResult = GetAllWithCacheAsync(
+                queryAction: query.Select(static (f) => f.FilePhysicalFullPath),
+                cacheKey: GetCacheKey<string[]>(methodName: nameof(GetAllFileFullNamesAsync),
+                additionalArgs: !string.IsNullOrWhiteSpace(filterExtension) ? [filterExtension] : null),
                 cacheDuration: TimeSpanValues.TimeMin5,
                 useCachedResult: useCachedResult
                 );
@@ -114,7 +140,6 @@ namespace DLNAServer.Database.Repositories
         {
             var minDepth = await GetSingleWithCacheAsync(
                 queryAction: DbSet
-                    .OrderEntitiesByDefault(DefaultOrderBy)
                     .AsNoTracking()
                     .Include(static (f) => f.Directory)
                     .MinAsync(static (f) => f.Directory != null ? f.Directory.Depth : short.MaxValue),
@@ -128,11 +153,11 @@ namespace DLNAServer.Database.Repositories
         {
             var memoryDataResult = GetAllWithCacheAsync(
                 queryAction: DbSet
-                    .OrderEntitiesByDefault(DefaultOrderBy)
                     .AsNoTracking()
                     .Include(static (f) => f.Directory)
                     .Where(f => f.Directory != null
-                        && f.Directory.Depth == depth),
+                        && f.Directory.Depth == depth)
+                    .OrderEntitiesByDefault(DefaultOrderBy),
                 cacheKey: GetCacheKey<FileEntity[]>([depth.ToString()]),
                 cacheDuration: defaultCacheDuration,
                 useCachedResult: useCachedResult
@@ -143,11 +168,11 @@ namespace DLNAServer.Database.Repositories
         {
             var memoryDataResult = GetAllWithCacheAsync(
                 queryAction: DbSet
-                    .OrderEntitiesByDefault(DefaultOrderBy)
                     .AsNoTracking()
                     .Include(static (f) => f.Directory)
                     .Where(f => f.Directory != null
                         && f.Directory.Depth == depth)
+                    .OrderEntitiesByDefault(DefaultOrderBy)
                     .Skip(skip)
                     .Take(take),
                 cacheKey: GetCacheKey<FileEntity[]>([depth.ToString(), skip.ToString(), take.ToString()]),
@@ -161,9 +186,9 @@ namespace DLNAServer.Database.Repositories
             pathFullName = pathFullName.ToLower(culture: System.Globalization.CultureInfo.InvariantCulture);
             var memoryDataResult = GetAllWithCacheAsync(
                 queryAction: DbSet
-                    .OrderEntitiesByDefault(DefaultOrderBy)
                     .IncludeChildEntities(DefaultInclude)
-                    .Where(f => f.LC_FilePhysicalFullPath.Equals(pathFullName)),
+                    .Where(f => EF.Functions.Collate(f.LC_FilePhysicalFullPath, "NOCASE").Equals(pathFullName))
+                    .OrderEntitiesByDefault(DefaultOrderBy),
                 cacheKey: GetCacheKey<FileEntity[]>([pathFullName]),
                 cacheDuration: defaultCacheDuration,
                 useCachedResult: useCachedResult

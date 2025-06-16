@@ -43,12 +43,12 @@ namespace DLNAServer.Helpers.Database.Conversions
             };
         }
 
-        private static string GetFnv1aHash(string value)
+        private static string GetFnv1aHash(ReadOnlySpan<char> value)
         {
             ulong hash = 2166136261;  // FNV-1a initial value
-            foreach (char c in value)
+            for (int i = 0; i < value.Length; i++)
             {
-                hash ^= c;
+                hash ^= value[i];
                 hash *= 16777619;  // FNV-1a prime
             }
             return hash.ToString("X");

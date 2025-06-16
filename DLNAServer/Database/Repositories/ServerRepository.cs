@@ -1,6 +1,5 @@
 ﻿using DLNAServer.Database.Entities;
 using DLNAServer.Database.Repositories.Interfaces;
-using DLNAServer.Helpers.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -17,9 +16,10 @@ namespace DLNAServer.Database.Repositories
         public Task<string?> GetLastAccessMachineNameAsync()
         {
             var lastAccess = DbSet
-                .OrderEntitiesByDefault(DefaultOrderBy)
+                .Order()
+                .Select(se => se.MachineName)
                 .FirstOrDefaultAsync();
-            return lastAccess.ContinueWith(static (se) => se.Result?.MachineName);
+            return lastAccess;
         }
     }
 }

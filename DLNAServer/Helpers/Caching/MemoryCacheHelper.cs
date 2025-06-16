@@ -40,7 +40,7 @@ namespace DLNAServer.Helpers.Caching
                 });
 
             new Task(async () =>
-            { 
+            {
                 using (evictionControlTokenSource)
                 {
                     try

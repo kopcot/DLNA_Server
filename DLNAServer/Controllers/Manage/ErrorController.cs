@@ -6,7 +6,7 @@ namespace DLNAServer.Controllers.Manage
 {
     [Route("[controller]")]
     [ApiController]
-    public class ErrorController : Controller
+    public class ErrorController : ControllerBase
     {
         private readonly ILogger<ErrorController> _logger;
         public ErrorController(ILogger<ErrorController> logger)

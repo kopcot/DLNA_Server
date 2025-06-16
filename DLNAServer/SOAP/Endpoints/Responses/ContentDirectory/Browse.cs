@@ -16,10 +16,10 @@ namespace DLNAServer.SOAP.Endpoints.Responses.ContentDirectory
         [XmlIgnore]
         public Result Result { get; set; } = new();
         /// <summary>
-        /// Serialized browse items for SOAP request 
+        /// Serialized browse items for SOAP request
         /// </summary>
         [XmlElement(ElementName = "Result")]
-        public string ResultOutput { get => GetResultOutput(); set { } }  // This setter is a no-op, included only to make the property compatible with XML serialization.
+        public string ResultOutput { get => GetResultOutput(); set { throw new NotSupportedException(); } }  // This setter is a no-op, included only to make the property compatible with XML serialization.
         [XmlElement(ElementName = "NumberReturned")]
         public uint NumberReturned { get; set; }
         [XmlElement(ElementName = "TotalMatches")]

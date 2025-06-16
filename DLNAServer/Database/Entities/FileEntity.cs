@@ -9,6 +9,8 @@ namespace DLNAServer.Database.Entities
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
     [Index(propertyName: nameof(FilePhysicalFullPath), IsUnique = true)]
     [Index(propertyName: nameof(LC_FilePhysicalFullPath), IsUnique = true)]
+    [Index(propertyName: nameof(FileExtension), IsUnique = false)]
+    [Index(propertyName: nameof(LC_FileExtension), IsUnique = false)]
     [Index(propertyName: nameof(DirectoryId), IsUnique = false)]
     [Index(propertyName: nameof(ThumbnailId), IsUnique = true)]
     [Table(nameof(DlnaDbContext.FileEntities))] // needed as in DlnaDbContext is in plural
@@ -49,6 +51,10 @@ namespace DLNAServer.Database.Entities
         [MaxLength(32, ErrorMessage = $"File extension cannot exceed 32 characters. Property {nameof(FileExtension)}")]
         [InternString]
         public string FileExtension { get; set; }
+        [Lowercase(nameof(FileExtension))]
+        [MaxLength(32, ErrorMessage = $"File extension cannot exceed 32 characters. Property {nameof(FileExtension)}")]
+        [InternString]
+        public string LC_FileExtension { get; set; }
         public long FileSizeInBytes { get; set; }
         public DateTime FileCreateDate { get; set; }
         public DateTime FileModifiedDate { get; set; }

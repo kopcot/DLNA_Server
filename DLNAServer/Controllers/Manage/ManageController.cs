@@ -20,7 +20,7 @@ namespace DLNAServer.Controllers.Manage
 {
     [Route("[controller]")]
     [ApiController]
-    public partial class ManageController : Controller
+    public partial class ManageController : ControllerBase
     {
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<ManageController> _logger;
@@ -250,14 +250,16 @@ namespace DLNAServer.Controllers.Manage
             }
 
             return BadRequest($"MemoryCache is not {typeof(MemoryCache).FullName}");
-
         }
         [HttpGet("stop")]
         public IActionResult GetExitApplication()
         {
             using (var scope = _serviceScopeFactory.CreateScope())
             {
+                MemoryInfo.LogMemoryInfo(_logger);
+
                 var hostApplicationLifetime = scope.ServiceProvider.GetRequiredService<IHostApplicationLifetime>();
+
                 hostApplicationLifetime.StopApplication();
             }
             return Ok("stopping");
@@ -269,6 +271,8 @@ namespace DLNAServer.Controllers.Manage
 
             using (var scope = _serviceScopeFactory.CreateScope())
             {
+                MemoryInfo.LogMemoryInfo(_logger);
+
                 var hostApplicationLifetime = scope.ServiceProvider.GetRequiredService<IHostApplicationLifetime>();
 
                 LoggerHelper.InformationSendingRestart(_logger);
@@ -311,25 +315,23 @@ namespace DLNAServer.Controllers.Manage
                     FileWatcherHandler.EnableRaisingEvents(false);
 
                     const int maxChunkSize = 50;
-                    long fileCountAll;
 
                     MemoryInfo.LogMemoryInfo(_logger);
-                    {
-                        fileCountAll = await FileRepository.GetCountAsync();
+                    long fileCountAll = await FileRepository.GetCountAsync();
 
-                        MemoryInfo.LogMemoryInfo(_logger);
-                        await ContentExplorerManager.CheckAllFilesExistingAsync();
-                        MemoryInfo.LogMemoryInfo(_logger);
-                        await ContentExplorerManager.CheckAllDirectoriesExistingAsync();
-                        MemoryInfo.LogMemoryInfo(_logger);
+                    MemoryInfo.LogMemoryInfo(_logger);
+                    await ContentExplorerManager.CheckAllFilesExistingAsync();
+                    MemoryInfo.LogMemoryInfo(_logger);
+                    await ContentExplorerManager.CheckAllDirectoriesExistingAsync();
+                    MemoryInfo.LogMemoryInfo(_logger);
 
-                        InformationDoneCheckingFilesAndDirectories();
+                    InformationDoneCheckingFilesAndDirectories();
 
-                        await ContentExplorerManager.ClearAllMetadataAsync();
-                        await ContentExplorerManager.ClearAllThumbnailsAsync(deleteThumbnailFile ?? true);
+                    await ContentExplorerManager.ClearAllMetadataAsync();
+                    await ContentExplorerManager.ClearAllThumbnailsAsync(deleteThumbnailFile ?? true);
 
-                        InformationDoneClearingInfo();
-                    }
+                    MemoryInfo.LogMemoryInfo(_logger);
+                    InformationDoneClearingInfo();
 
                     int chunksCount = (int)Math.Round((double)fileCountAll / maxChunkSize, 0, MidpointRounding.ToPositiveInfinity);
 
@@ -357,7 +359,6 @@ namespace DLNAServer.Controllers.Manage
 
                             FileRepository.DabataseClearChangeTracker();
                             await FileRepository.DatabaseShrinkMemoryAsync();
-
 
                             DebugDoneRecreatingInfoChunk(chunkIndex + 1, chunksCount);
                         }
@@ -390,7 +391,6 @@ namespace DLNAServer.Controllers.Manage
             {
                 FileWatcherHandler.EnableRaisingEvents(true);
                 IsGetRecreateAllFilesInfoAsyncActive = false;
-                HttpContext.Response.RegisterForDispose(this);
                 MemoryInfo.LogMemoryInfo(_logger);
                 GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce;
                 GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced);

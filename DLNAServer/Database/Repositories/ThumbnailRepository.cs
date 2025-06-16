@@ -25,10 +25,10 @@ namespace DLNAServer.Database.Repositories
             pathFullName = pathFullName.ToLower(culture: System.Globalization.CultureInfo.InvariantCulture);
             var memoryDataResult = GetAllWithCacheAsync(
                 queryAction: DbSet
-                    .OrderEntitiesByDefault(DefaultOrderBy)
                     .IncludeChildEntities(DefaultInclude)
                     .Where(t => t.LC_ThumbnailFilePhysicalFullPath != null
-                        && t.LC_ThumbnailFilePhysicalFullPath.Equals(pathFullName)),
+                        && EF.Functions.Collate(t.LC_ThumbnailFilePhysicalFullPath, "NOCASE").Equals(pathFullName))
+                    .OrderEntitiesByDefault(DefaultOrderBy),
                 cacheKey: GetCacheKey<ThumbnailEntity[]>([pathFullName]),
                 cacheDuration: defaultCacheDuration,
                 useCachedResult: useCachedResult

@@ -138,7 +138,6 @@ namespace DLNAServer
                 });
             }
 
-
             _ = builder.Services.AddControllers();
             _ = builder.Services.AddHttpContextAccessor();
             _ = builder.Services.AddResponseCompression(static (options) =>
@@ -182,8 +181,6 @@ namespace DLNAServer
                             }
                         }
                         , LogLevel.Debug);
-                    // default internal configured have set IMemoryCahce.Size value as 10240
-                    //options.UseMemoryCache(serviceProvider.GetRequiredService<IMemoryCache>()); 
                 },
                 poolSize: 64);
             _ = builder.Services.AddSingleton<SQLitePragmaInterceptor>();
@@ -226,18 +223,18 @@ namespace DLNAServer
             _ = builder.Services.AddSingleton<IUPNPDevices, UPNPDevices>();
 
             _ = builder.Services.AddScopedLazyService<IContentDirectoryService, ContentDirectoryService>();
-            _ = builder.Services.AddScopedLazyService<IAVTransportService, AVTransportService>();
             _ = builder.Services.AddScopedLazyService<IConnectionManagerService, ConnectionManagerService>();
+            _ = builder.Services.AddScopedLazyService<IAVTransportService, AVTransportService>();
             _ = builder.Services.AddScopedLazyService<IMediaReceiverRegistrarService, MediaReceiverRegistrarService>();
 
             _ = builder.Services.AddScopedLazyService<IMediaProcessingService, MediaProcessingService>();
             _ = builder.Services.AddScopedLazyService<IAudioProcessor, AudioProcessor>();
             _ = builder.Services.AddScopedLazyService<IImageProcessor, ImageProcessor>();
             _ = builder.Services.AddScopedLazyService<IVideoProcessor, VideoProcessor>();
-            _ = builder.Services.AddScopedLazyService<IFFmpegService, FFmpegService>();
+            _ = builder.Services.AddSingleton<IFFmpegService, FFmpegService>();
 
             _ = builder.Services.AddScopedLazyService<IContentExplorerManager, ContentExplorerManager>();
-            _ = builder.Services.AddScopedLazyService<IFileMemoryCacheManager, FileMemoryCacheManager>();
+            _ = builder.Services.AddSingleton<IFileMemoryCacheManager, FileMemoryCacheManager>();
             _ = builder.Services.AddSingleton<IFileWatcherHandler, FileWatcherHandler>();
             _ = builder.Services.AddScopedLazyService<IFileWatcherManager, FileWatcherManager>();
             _ = builder.Services.AddTransient<IFileService, FileService>();

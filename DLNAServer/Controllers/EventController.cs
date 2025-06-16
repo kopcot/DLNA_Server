@@ -8,7 +8,7 @@ namespace DLNAServer.Controllers
 {
     [Route("[controller]")]
     [ApiController]
-    public partial class EventController : Controller
+    public partial class EventController : ControllerBase
     {
         private readonly ILogger<EventController> _logger;
         private readonly ISubscriptionService _subscriptionService;
@@ -32,9 +32,9 @@ namespace DLNAServer.Controllers
                 this.HttpContext.Request.Path.Value,
                 this.HttpContext.Request.Method);
 
-            var callback = Request.Headers.FirstOrDefault(static (h) => h.Key.Contains("Callback", StringComparison.InvariantCultureIgnoreCase)).Value.FirstOrDefault();
-            var timeout = Request.Headers.FirstOrDefault(static (h) => h.Key.Contains("Timeout", StringComparison.InvariantCultureIgnoreCase)).Value.FirstOrDefault();
-            var sid = Request.Headers.FirstOrDefault(static (h) => h.Key.Contains("SID", StringComparison.InvariantCultureIgnoreCase)).Value.FirstOrDefault();
+            var callback = Request.Headers.FirstOrDefault(static (h) => h.Key.Contains("Callback", StringComparison.OrdinalIgnoreCase)).Value.FirstOrDefault();
+            var timeout = Request.Headers.FirstOrDefault(static (h) => h.Key.Contains("Timeout", StringComparison.OrdinalIgnoreCase)).Value.FirstOrDefault();
+            var sid = Request.Headers.FirstOrDefault(static (h) => h.Key.Contains("SID", StringComparison.OrdinalIgnoreCase)).Value.FirstOrDefault();
             var timeoutNumber = int.TryParse(new string(timeout?.Where(static (c) => char.IsDigit(c)).ToArray()), out int number) ? number : -9999;
 
             if (string.IsNullOrWhiteSpace(callback)

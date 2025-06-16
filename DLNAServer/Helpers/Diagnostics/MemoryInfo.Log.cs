@@ -7,6 +7,7 @@
             LogLevel.Information,
             new EventId(1, "FFmpegGetMediaInfo"),
             "Memory log [{methodName}:{lineNumber}]\n" +
+            "GC-collection Gen0 (count): " + GC.CollectionCount(0) + "\n" +
             "Allocated: {allocatedInMB:0.00} MB\n" +
             "Heap size bytes: {heapSizeBytesInMB:0.00} MB\n" +
             "Working set 64-bit: {workingSet64InMB:0.00} MB\n" +

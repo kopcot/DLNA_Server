@@ -13,5 +13,11 @@ namespace DLNAServer.Helpers.Database
             }
             return memory.IsEmpty ? [] : memory.ToArray();
         }
+        public static TResult[] Sort<TResult>(this ReadOnlyMemory<TResult> memory, Comparison<TResult> comparison)
+        {
+            TResult[] array = memory.AsArray();
+            Array.Sort(array, comparison);
+            return array;
+        }
     }
 }

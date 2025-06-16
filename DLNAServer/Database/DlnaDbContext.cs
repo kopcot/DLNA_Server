@@ -91,7 +91,8 @@ namespace DLNAServer.Database
             var entityTypes = typeof(BaseEntity)
                 .Assembly
                 .GetTypes()
-                .Where(static (t) => t.IsClass && !t.IsAbstract && typeof(BaseEntity).IsAssignableFrom(t));
+                .Where(static (t) => t.IsClass && !t.IsAbstract && typeof(BaseEntity).IsAssignableFrom(t))
+                .ToArray();
 
             foreach (var entityType in entityTypes)
             {
@@ -205,9 +206,8 @@ namespace DLNAServer.Database
                 {
                     switch (entry.State)
                     {
-                        case EntityState.Added:
-                            entry.Entity.CreatedInDB = DateTime.Now;
-                            break;
+                        //case EntityState.Added:
+                        //    break;
                         case EntityState.Modified:
                             entry.Entity.ModifiedInDB = DateTime.Now;
                             break;

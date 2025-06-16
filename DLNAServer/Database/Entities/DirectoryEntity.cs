@@ -6,8 +6,9 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace DLNAServer.Database.Entities
 {
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
-    [Index(propertyName: nameof(DirectoryFullPath), IsUnique = false)]
-    [Index(propertyName: nameof(LC_DirectoryFullPath), IsUnique = false)]
+    [Index(propertyName: nameof(DirectoryFullPath), IsUnique = true)]
+    [Index(propertyName: nameof(LC_DirectoryFullPath), IsUnique = true)]
+    [Index(propertyName: nameof(ParentDirectoryId), IsUnique = false)]
     [Index(propertyName: nameof(Depth), IsUnique = false)]
     [Table(nameof(DlnaDbContext.DirectoryEntities))] // needed as in DlnaDbContext is in plural
     public class DirectoryEntity : BaseEntity

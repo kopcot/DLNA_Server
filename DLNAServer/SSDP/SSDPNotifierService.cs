@@ -79,8 +79,9 @@ namespace DLNAServer.SSDP
 
                         while (!cancellationToken.IsCancellationRequested && isMessageSend)
                         {
-                            foreach (var device in _upnpDevices.AllUPNPDevices)
+                            for (int i = 0; i < _upnpDevices.AllUPNPDevices.Length; i++)
                             {
+                                UPNPDevice? device = _upnpDevices.AllUPNPDevices[i];
                                 isMessageSend &= await SendMessage(udpClientSender, device, _ip.MulticastEndPoint, _ip.SSDP_PORT, notification); // DLNA device discovery
                                 isMessageSend &= await SendMessage(udpClientSender, device, _ip.BroadcastEndPoint, _ip.SSDP_PORT, notification); // General announcements 
 
@@ -223,7 +224,6 @@ namespace DLNAServer.SSDP
         {
             try
             {
-
                 if (udpClient.Client.Connected)
                 {
                     udpClient.Client.Shutdown(SocketShutdown.Both);

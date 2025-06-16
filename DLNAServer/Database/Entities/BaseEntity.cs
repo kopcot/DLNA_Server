@@ -10,8 +10,14 @@ namespace DLNAServer.Database.Entities
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         [Key]
         [Required]
-        public Guid Id { get; set; }
+        public Guid Id { get; set; } // GUID used for DLNA compliance as ObjectID from SOAP-reuqest
+        /// <summary>
+        /// <see cref="DateTime.Now"/> as default
+        /// </summary>
         public DateTime CreatedInDB { get; set; } = DateTime.Now;
+        /// <summary>
+        /// <see cref="DateTime.Now"/> as default
+        /// </summary>
         public DateTime? ModifiedInDB { get; set; }
     }
 }

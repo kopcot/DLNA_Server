@@ -86,7 +86,7 @@ namespace DLNAServer.Features.FileWatcher
         }
         public async Task HandleFileCreatedChanged(string fileFullPath, WatcherChangeTypes eventAction, DateTime eventTimestamp)
         {
-            await HandleFileEvent(async (eventAction, fileInfo, __) =>
+            await HandleFileEvent(async (eventAction, fileInfo, __, eventTimestamp) =>
             {
                 if (!fileInfo.Exists)
                 {
@@ -103,7 +103,7 @@ namespace DLNAServer.Features.FileWatcher
                     var dlnaMime = GetConfiguredDlnaMimeFromFileExtension(fileInfo.Extension);
                     var inputFile = new Dictionary<DlnaMime, IEnumerable<string>> { { dlnaMime, [fileInfo.FullName] } };
 
-                    await _contentExplorerManager.RefreshFoundFilesAsync(inputFile, true);
+                    await _contentExplorerManager.RefreshFoundFilesAsync(inputFile, shouldBeAdded: true);
                 }
                 else
                 {
@@ -129,7 +129,7 @@ namespace DLNAServer.Features.FileWatcher
         }
         public async Task HandleFileRenamed(string newFileFullPath, string oldFileFullPath, WatcherChangeTypes eventAction, DateTime eventTimestamp)
         {
-            await HandleFileEvent(async (eventAction, fileInfo, fileInfoOld) =>
+            await HandleFileEvent(async (eventAction, fileInfo, fileInfoOld, eventTimestamp) =>
             {
                 if (!fileInfo.Exists)
                 {
@@ -154,7 +154,7 @@ namespace DLNAServer.Features.FileWatcher
                     }
                     Dictionary<DlnaMime, IEnumerable<string>> inputFile = new() { { dlnaMime, [fileInfo.FullName] } };
 
-                    await _contentExplorerManager.RefreshFoundFilesAsync(inputFile, true);
+                    await _contentExplorerManager.RefreshFoundFilesAsync(inputFile, shouldBeAdded: true);
                 }
                 else
                 {
@@ -166,7 +166,7 @@ namespace DLNAServer.Features.FileWatcher
         }
         public async Task HandleFileRemove(string fileFullPath, WatcherChangeTypes eventAction, DateTime eventTimestamp)
         {
-            await HandleFileEvent(async (eventAction, fileInfo, __) =>
+            await HandleFileEvent(async (eventAction, fileInfo, __, ___) =>
             {
                 DebugFileRemove(eventAction, fileInfo.FullName);
                 var files = (await _fileRepository.GetAllByPathFullNameAsync(fileInfo.FullName, useCachedResult: false)).AsArray();
@@ -183,13 +183,12 @@ namespace DLNAServer.Features.FileWatcher
                 _fileMemoryCacheManager.EvictSingleFile(fileInfo.FullName);
 
                 DebugFileRemoveDone(eventAction, fileInfo.FullName);
-
             }, eventAction, fileFullPath, null, eventTimestamp);
         }
 
-        private static async Task PrepareToRemoveEntity(IFileRepository fileRepository, IThumbnailRepository thumbnailRepository, IEnumerable<FileEntity> files)
+        private static async Task PrepareToRemoveEntity(IFileRepository fileRepository, IThumbnailRepository thumbnailRepository, FileEntity[] files)
         {
-            if (!files.Any())
+            if (files.Length == 0)
             {
                 return;
             }
@@ -245,7 +244,7 @@ namespace DLNAServer.Features.FileWatcher
         }
         public async Task HandleDirectoryRemove(string fileFullPath, WatcherChangeTypes eventAction, DateTime eventTimestamp)
         {
-            await HandleDirectoryEvent(async (eventAction, directoryInfo, _1) =>
+            await HandleDirectoryEvent(async (_1, directoryInfo, _2) =>
             {
                 var directories = (await _directoryRepository.GetAllStartingByPathFullNameAsync(directoryInfo.FullName, false)).AsArray();
                 var files = (await _fileRepository.GetAllByParentDirectoryIdsAsync(directories.Select(static (d) => d.Id), [], false)).AsArray();
@@ -254,7 +253,6 @@ namespace DLNAServer.Features.FileWatcher
                 _ = await _fileRepository.DeleteRangeAsync(files);
                 _ = await _directoryRepository.DeleteRangeAsync(directories);
                 _ = await _thumbnailRepository.SaveChangesAsync();
-
             }, eventAction, fileFullPath, null, eventTimestamp);
         }
 
@@ -271,8 +269,8 @@ namespace DLNAServer.Features.FileWatcher
 
                 var directories = (await _directoryRepository.GetAllStartingByPathFullNameAsync(directoryInfoOld.FullName, false)).AsArray();
                 var files = (await _fileRepository.GetAllByParentDirectoryIdsAsync(directories.Select(static (d) => d.Id), [], false)).AsArray();
-                UpdateFilePaths(ref files, directoryInfo.FullName, directoryInfoOld.FullName);
-                UpdateDirectoryPaths(ref directories, directoryInfo.FullName, directoryInfoOld.FullName);
+                UpdateFilePaths(files, directoryInfo.FullName, directoryInfoOld.FullName);
+                UpdateDirectoryPaths(directories, directoryInfo.FullName, directoryInfoOld.FullName);
 
                 // Save entities into database, as next function are getting dbSet.AsNoTracking() results
                 _ = await _directoryRepository.SaveChangesAsync();
@@ -283,8 +281,8 @@ namespace DLNAServer.Features.FileWatcher
 
                 var existingDirectoryEntities = (await _directoryRepository.GetAllAsync(useCachedResult: false)).AsArray();
 
-                FillParentDirectoriesAsync(ref existingDirectoryEntities, directories);
-                FillParentDirectoriesAsync(ref existingDirectoryEntities, ref files, directories);
+                FillParentDirectories(ref existingDirectoryEntities, directories);
+                FillParentDirectories(ref existingDirectoryEntities, files, directories);
 
                 _ = await _directoryRepository.SaveChangesAsync();
                 _ = await _fileRepository.SaveChangesAsync();
@@ -293,7 +291,7 @@ namespace DLNAServer.Features.FileWatcher
         private async Task UpdateRenamedFile(IEnumerable<FileEntity> files, FileInfo fileInfo)
         {
             var file = files.First();
-            var filesToRemove = files.Where(f => f != file);
+            var filesToRemove = files.Where(f => f != file).ToArray();
 
             file.FileName = fileInfo.Name;
             file.Title = fileInfo.Name;
@@ -336,8 +334,8 @@ namespace DLNAServer.Features.FileWatcher
             var existingDirectoryEntities = (await _directoryRepository.GetAllAsync(useCachedResult: false)).AsArray();
 
             FileEntity[] fileEntities = [file];
-            FillParentDirectoriesAsync(ref existingDirectoryEntities, newDirectoryEntities);
-            FillParentDirectoriesAsync(ref existingDirectoryEntities, ref fileEntities, newDirectoryEntities);
+            FillParentDirectories(ref existingDirectoryEntities, newDirectoryEntities);
+            FillParentDirectories(ref existingDirectoryEntities, fileEntities, newDirectoryEntities);
 
             await PrepareToRemoveEntity(_fileRepository, _thumbnailRepository, filesToRemove);
 
@@ -346,11 +344,12 @@ namespace DLNAServer.Features.FileWatcher
             _ = await _thumbnailRepository.SaveChangesAsync();
             _ = await _fileRepository.DeleteRangeAsync(filesToRemove);
         }
-        private static void UpdateFilePaths(ref FileEntity[] files, string newPath, string oldPath)
+        private static void UpdateFilePaths(Span<FileEntity> files, string newPath, string oldPath)
         {
-            foreach (var file in files)
+            for (int i = 0; i < files.Length; i++)
             {
-                bool isFileInSameDirectory = file.Folder!.Equals(oldPath, StringComparison.InvariantCultureIgnoreCase);
+                FileEntity file = files[i];
+                bool isFileInSameDirectory = file.Folder!.Equals(oldPath, StringComparison.OrdinalIgnoreCase);
                 if (isFileInSameDirectory)
                 {
                     file.Folder = file.Folder!.Replace(oldPath, newPath);
@@ -371,11 +370,12 @@ namespace DLNAServer.Features.FileWatcher
                 }
             }
         }
-        private static void UpdateDirectoryPaths(ref DirectoryEntity[] directories, string newPath, string oldPath)
+        private static void UpdateDirectoryPaths(Span<DirectoryEntity> directories, string newPath, string oldPath)
         {
             DirectoryInfo directoryInfo;
-            foreach (var directory in directories)
+            for (int i = 0; i < directories.Length; i++)
             {
+                DirectoryEntity directory = directories[i];
                 directory.DirectoryFullPath = directory.DirectoryFullPath.Replace(oldPath, newPath);
 
                 directoryInfo = new(directory.DirectoryFullPath);
@@ -418,7 +418,7 @@ namespace DLNAServer.Features.FileWatcher
                 }
             }
         }
-        private async Task HandleFileEvent(Func<WatcherChangeTypes, FileInfo, FileInfo?, Task> fileOperation, WatcherChangeTypes action, string filePath, string? filePathOld, DateTime eventTimestamp)
+        private async Task HandleFileEvent(Func<WatcherChangeTypes, FileInfo, FileInfo?, DateTime, Task> fileOperation, WatcherChangeTypes action, string filePath, string? filePathOld, DateTime eventTimestamp)
         {
             Guid guid = Guid.NewGuid();
 
@@ -429,7 +429,7 @@ namespace DLNAServer.Features.FileWatcher
                 FileInfo? fileInfoOld = !string.IsNullOrWhiteSpace(filePathOld)
                     ? new(filePathOld)
                     : null;
-                await fileOperation(action, fileInfo, fileInfoOld);
+                await fileOperation(action, fileInfo, fileInfoOld, eventTimestamp);
                 DebugEventSuccessful(action, guid, eventTimestamp);
             }
             catch (Exception ex)
@@ -463,16 +463,17 @@ namespace DLNAServer.Features.FileWatcher
 
             _ = Interlocked.Increment(ref _updatesCount);
         }
-        private static void FillParentDirectoriesAsync(ref DirectoryEntity[] existingDirectoryEntities, ref FileEntity[] fileEntities, IEnumerable<DirectoryEntity> directoryEntities)
+        private static void FillParentDirectories(ref DirectoryEntity[] existingDirectoryEntities, Span<FileEntity> fileEntities, IEnumerable<DirectoryEntity> directoryEntities)
         {
-            foreach (var file in fileEntities)
+            for (int i = 0; i < fileEntities.Length; i++)
             {
+                FileEntity? file = fileEntities[i];
                 file.Directory = directoryEntities.FirstOrDefault(d => d.DirectoryFullPath == file.Folder)
                     ?? existingDirectoryEntities.FirstOrDefault(de => de.DirectoryFullPath == file.Folder);
             }
         }
 
-        private static void FillParentDirectoriesAsync(ref DirectoryEntity[] existingDirectoryEntities, IEnumerable<DirectoryEntity> directoryEntities)
+        private static void FillParentDirectories(ref DirectoryEntity[] existingDirectoryEntities, IEnumerable<DirectoryEntity> directoryEntities)
         {
             foreach (var directoryEntity in directoryEntities)
             {

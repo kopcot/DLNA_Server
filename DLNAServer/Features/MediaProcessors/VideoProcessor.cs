@@ -102,7 +102,7 @@ namespace DLNAServer.Features.MediaProcessors
                         0,
                         fileEntities.Length,
                         parallelOptions: new() { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-                        async (index, cancellationToken) =>
+                        async (index, _) =>
                         {
                             var file = fileEntities.Span[index];
 
@@ -181,7 +181,7 @@ namespace DLNAServer.Features.MediaProcessors
                         0,
                         fileEntities.Length,
                         parallelOptions: new() { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-                        async (index, cancellationToken) =>
+                        async (index, _) =>
                         {
                             var file = fileEntities.Span[index];
 
@@ -216,7 +216,9 @@ namespace DLNAServer.Features.MediaProcessors
             }
 
             if (videoMetadata != null ||
-               (setCheckedForFailed && videoMetadata == null))
+               (setCheckedForFailed &&
+                    videoMetadata == null &&
+                    (DateTime.Now - file.CreatedInDB) > TimeSpanValues.TimeHours12))
             {
                 file.IsMetadataChecked = true;
 
@@ -244,9 +246,9 @@ namespace DLNAServer.Features.MediaProcessors
                     if (await FFmpegService.TryGetMediaInfo(fileEntity.FilePhysicalFullPath, cancellationTokenSource.Token) is IMediaInfo mediaInfo)
                     {
                         fileEntity.FileSizeInBytes = mediaInfo.Size;
-                        return (ExtractVideoMetadataAsync(ref mediaInfo),
-                                ExtractAudioMetadataAsync(ref mediaInfo),
-                                ExtractSubtitleMetadataAsync(ref mediaInfo));
+                        return (ExtractVideoMetadata(ref mediaInfo),
+                                ExtractAudioMetadata(ref mediaInfo),
+                                ExtractSubtitleMetadata(ref mediaInfo));
                     }
                     return (null, null, null);
                 }
@@ -257,7 +259,7 @@ namespace DLNAServer.Features.MediaProcessors
                 return (null, null, null);
             }
         }
-        private MediaVideoEntity? ExtractVideoMetadataAsync(ref readonly IMediaInfo mediaInfo)
+        private MediaVideoEntity? ExtractVideoMetadata(ref readonly IMediaInfo mediaInfo)
         {
             try
             {
@@ -292,7 +294,7 @@ namespace DLNAServer.Features.MediaProcessors
                 return null;
             }
         }
-        private MediaAudioEntity? ExtractAudioMetadataAsync(ref readonly IMediaInfo mediaInfo)
+        private MediaAudioEntity? ExtractAudioMetadata(ref readonly IMediaInfo mediaInfo)
         {
             try
             {
@@ -324,7 +326,7 @@ namespace DLNAServer.Features.MediaProcessors
                 return null;
             }
         }
-        private MediaSubtitleEntity? ExtractSubtitleMetadataAsync(ref readonly IMediaInfo mediaInfo)
+        private MediaSubtitleEntity? ExtractSubtitleMetadata(ref readonly IMediaInfo mediaInfo)
         {
             try
             {
@@ -407,13 +409,12 @@ namespace DLNAServer.Features.MediaProcessors
                         0,
                         fileEntities.Length,
                         parallelOptions: new() { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-                        async (index, cancellationToken) =>
+                        async (index, _) =>
                         {
                             var file = fileEntities.Span[index];
 
                             await RefreshSingleFileThumbnailAsync(file, setCheckedForFailed);
                         });
-
                 }
                 _ = await FileRepository.SaveChangesAsync();
             }
@@ -456,7 +457,8 @@ namespace DLNAServer.Features.MediaProcessors
 
                     InformationSetThumbnail(file.FilePhysicalFullPath);
                 }
-                else if (setCheckedForFailed)
+                else if (setCheckedForFailed &&
+                    (DateTime.Now - file.CreatedInDB) > TimeSpanValues.TimeHours12)
                 {
                     file.IsThumbnailChecked = true;
 
@@ -517,7 +519,7 @@ namespace DLNAServer.Features.MediaProcessors
                         using (CancellationTokenSource cancellationTokenSource_Conversion = new(TimeSpanValues.TimeMin5))
                         {
                             var conversionResult = await conversion.Start(cancellationTokenSource_Conversion.Token);
-                            
+
                             DebugCreateThumbnail(outputThumbnailFileFullPath, conversionResult.Duration.TotalMilliseconds);
                         }
                     }

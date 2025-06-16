@@ -64,7 +64,6 @@ namespace DLNAServer.Features.FileWatcher
             {
                 _logger.LogGeneralErrorMessage(ex);
             }
-
         }
         public override async Task StopAsync(CancellationToken cancellationToken)
         {
@@ -85,16 +84,16 @@ namespace DLNAServer.Features.FileWatcher
 
         private bool ShouldExcludeByThumbnailPath(string fullPath)
         {
-            return fullPath.Contains(_serverConfig.SubFolderForThumbnail, StringComparison.InvariantCultureIgnoreCase);
+            return fullPath.Contains(_serverConfig.SubFolderForThumbnail, StringComparison.OrdinalIgnoreCase);
         }
         private bool ShouldExcludeByExcludeFoldersPath(string fullPath)
         {
-            return _serverConfig.ExcludeFolders.Any(exclude => fullPath.Contains(exclude, StringComparison.InvariantCultureIgnoreCase));
+            return _serverConfig.ExcludeFolders.Any(exclude => fullPath.Contains(exclude, StringComparison.OrdinalIgnoreCase));
         }
         private bool IsFileExtensionMatch(string fullPath)
         {
             string fileExtension = new FileInfo(fullPath).Extension;
-            return _serverConfig.MediaFileExtensions.Any(extension => fileExtension.EndsWith(extension.Key, StringComparison.InvariantCultureIgnoreCase));
+            return _serverConfig.MediaFileExtensions.Any(extension => fileExtension.EndsWith(extension.Key, StringComparison.OrdinalIgnoreCase));
         }
         private static bool IsDirectory(string fullPath)
         {

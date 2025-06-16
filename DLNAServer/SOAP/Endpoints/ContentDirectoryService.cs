@@ -9,7 +9,7 @@ using DLNAServer.SOAP.Endpoints.Responses.ContentDirectory.Mapping;
 
 namespace DLNAServer.SOAP.Endpoints
 {
-    public partial class ContentDirectoryService : IContentDirectoryService, IDisposable
+    public partial class ContentDirectoryService : IContentDirectoryService
     {
         private readonly Lazy<IContentExplorerManager> _contentExplorerLazy;
         private readonly Lazy<IFileWatcherManager> _fileWatcherManagerLazy;
@@ -77,15 +77,40 @@ namespace DLNAServer.SOAP.Endpoints
                 {
                     response.Result.DidlLite.Containers = directoryEntities
                         .AsArray()
-                        .Select(directory => directory.MapContainer(localIpEndpoint, isRootFolder))
+                        .Select(directory =>
+                        {
+                            try
+                            {
+                                return directory.MapContainer(localIpEndpoint, isRootFolder);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogGeneralErrorMessage(ex, directory.DirectoryFullPath);
+                            }
+                            return null;
+                        })
+                        .Where(container => container != null)
+                        .Select(container => container!)
                         .ToArray();
                 }
-
                 if (fileEntities.Length != 0)
                 {
                     response.Result.DidlLite.BrowseItems = fileEntities
                         .AsArray()
-                        .Select(file => file.MapItem(localIpEndpoint, isRootFolder))
+                        .Select(file =>
+                        {
+                            try
+                            {
+                                return file.MapItem(localIpEndpoint, isRootFolder);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogGeneralErrorMessage(ex, file.FilePhysicalFullPath);
+                            }
+                            return null;
+                        })
+                        .Where(browseItems => browseItems != null)
+                        .Select(browseItems => browseItems!)
                         .ToArray();
                 }
 
@@ -107,8 +132,6 @@ namespace DLNAServer.SOAP.Endpoints
                 _ = _browseLock.Release();
 
                 DebugBrowseRequestFinish(objectID);
-
-                _httpContextAccessor.HttpContext?.Response.RegisterForDispose(this);
 
                 return response;
             }
@@ -231,37 +254,5 @@ namespace DLNAServer.SOAP.Endpoints
 
             return new() { };
         }
-
-        #region Dispose
-        private bool disposedValue;
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    // TODO: dispose managed state (managed objects)
-                }
-
-                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-                // TODO: set large fields to null
-                disposedValue = true;
-            }
-        }
-
-        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
-        // ~ContentDirectoryService()
-        // {
-        //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-        //     Dispose(disposing: false);
-        // }
-
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
-        }
-        #endregion Dispose
     }
 }

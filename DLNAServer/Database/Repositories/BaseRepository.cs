@@ -26,7 +26,7 @@ namespace DLNAServer.Database.Repositories
             _repositoryName = repositoryName;
         }
         protected TimeSpan defaultCacheDuration = TimeSpanValues.TimeSecs5;
-        protected TimeSpan defaultCacheAbsoluteDuration = TimeSpanValues.TimeMin5;
+        protected TimeSpan defaultCacheAbsoluteDuration = TimeSpanValues.TimeMin30;
         protected virtual Func<IQueryable<T>, IOrderedQueryable<T>> DefaultOrderBy { get; set; } = static (query) => query.OrderByDescending(static (e) => e.CreatedInDB);
         protected virtual Func<IQueryable<T>, IQueryable<T>> DefaultInclude { get; set; } = static (query) => query;
         DlnaDbContext IBaseRepository<T>.DbContext => DbContext;
@@ -160,14 +160,14 @@ namespace DLNAServer.Database.Repositories
         }
         public Task<ReadOnlyMemory<T>> GetAllAsync(bool withIncludes = true, bool asNoTracking = false, bool useCachedResult = true)
         {
-            var query = DbSet
-                .OrderEntitiesByDefault(DefaultOrderBy);
-            query = withIncludes
-                ? query.IncludeChildEntities(DefaultInclude)
-                : query;
+            var query = withIncludes
+                ? DbSet.IncludeChildEntities(DefaultInclude)
+                : DbSet;
             query = asNoTracking
                 ? query.AsNoTracking()
                 : query;
+            query = query
+               .OrderEntitiesByDefault(DefaultOrderBy);
             var memoryDataResult = GetAllWithCacheAsync(
                 queryAction: query,
                 cacheKey: GetCacheKey<T[]>(additionalArgs: [withIncludes.ToString(), asNoTracking.ToString()]),
@@ -178,17 +178,16 @@ namespace DLNAServer.Database.Repositories
         }
         public Task<ReadOnlyMemory<T>> GetAllAsync(int skip, int take, bool withIncludes = true, bool asNoTracking = false, bool useCachedResult = true)
         {
-            var query = DbSet
-                .OrderEntitiesByDefault(DefaultOrderBy);
-            query = withIncludes
-                ? query.IncludeChildEntities(DefaultInclude)
-                : query;
+            var query = withIncludes
+                ? DbSet.IncludeChildEntities(DefaultInclude)
+                : DbSet;
             query = asNoTracking
                 ? query.AsNoTracking()
                 : query;
             query = query
-                .Skip(skip)
-                .Take(take);
+               .OrderEntitiesByDefault(DefaultOrderBy)
+               .Skip(skip)
+               .Take(take);
             var memoryDataResult = GetAllWithCacheAsync(
                 queryAction: query,
                 cacheKey: GetCacheKey<T[]>(additionalArgs: [withIncludes.ToString(), asNoTracking.ToString(), skip.ToString(), take.ToString()]),
@@ -210,9 +209,9 @@ namespace DLNAServer.Database.Repositories
         {
             var memoryDataResult = GetAllWithCacheAsync(
                 queryAction: DbSet
-                        .OrderEntitiesByDefault(DefaultOrderBy)
                         .IncludeChildEntities(DefaultInclude)
-                        .Where(e => guids.Any(guid => guid == e.Id)),
+                        .Where(e => guids.Any(guid => guid == e.Id))
+                        .OrderEntitiesByDefault(DefaultOrderBy),
                 cacheKey: GetCacheKey<T[]>(guids.Select(static (g) => g.ToString())),
                 cacheDuration: defaultCacheDuration,
                 useCachedResult: useCachedResult

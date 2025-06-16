@@ -7,7 +7,6 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace DLNAServer.Database.Repositories
 {
-
     public class DirectoryRepository : BaseRepository<DirectoryEntity>, IDirectoryRepository
     {
         public DirectoryRepository(DlnaDbContext dbContext, IMemoryCache memoryCache, ILogger<DirectoryRepository> logger)
@@ -21,15 +20,16 @@ namespace DLNAServer.Database.Repositories
         }
         public Task<ReadOnlyMemory<DirectoryEntity>> GetAllByParentDirectoryIdsAsync(IEnumerable<Guid> expectedDirectories, IEnumerable<string> excludeFolders, bool useCachedResult = true)
         {
+            var expectedDirectorySet = expectedDirectories as HashSet<Guid> ?? expectedDirectories.ToHashSet();
             var exclude = excludeFolders.Select(static (ef) => ef.ToLower(culture: System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+
             var memoryDataResult = GetAllWithCacheAsync(
                 queryAction: DbSet
-                    .OrderEntitiesByDefault(DefaultOrderBy)
+                    .Where(d => d.ParentDirectoryId != null
+                        && expectedDirectorySet.Contains(d.ParentDirectoryId.Value)
+                        && exclude.All(ef => !EF.Functions.Collate(d.LC_DirectoryFullPath, "NOCASE").Contains(ef)))
                     .IncludeChildEntities(DefaultInclude)
-                    .Where(d => d.ParentDirectory != null
-                        //&& expectedDirectories.Any(guid => guid == d.ParentDirectory.Id)
-                        && expectedDirectories.Contains(d.ParentDirectory.Id)
-                        && exclude.All(ef => !d.LC_DirectoryFullPath.Contains(ef))),
+                    .OrderEntitiesByDefault(DefaultOrderBy),
                 cacheKey: GetCacheKey<DirectoryEntity[]>(expectedDirectories.Select(static (e) => e.ToString())),
                 cacheDuration: defaultCacheDuration,
                 useCachedResult: useCachedResult
@@ -44,11 +44,28 @@ namespace DLNAServer.Database.Repositories
         {
             var memoryDataResult = GetAllWithCacheAsync(
                 queryAction: DbSet
-                    .OrderEntitiesByDefault(DefaultOrderBy)
                     .AsNoTracking()
+                    .OrderEntitiesByDefault(DefaultOrderBy)
                     .Select(static (d) => d.DirectoryFullPath),
                 cacheKey: GetCacheKey<string[]>(),
                 cacheDuration: TimeSpanValues.TimeMin5,
+                useCachedResult: useCachedResult
+                );
+            return memoryDataResult;
+        }
+        public Task<ReadOnlyMemory<DirectoryEntity>> GetAllWithEmptyParentDirectoryIdsAsync(string pathFullName, IEnumerable<string> excludeFolders, bool useCachedResult = true)
+        {
+            pathFullName = pathFullName.ToLower(culture: System.Globalization.CultureInfo.InvariantCulture);
+            var exclude = excludeFolders.Select(static (ef) => ef.ToLower(culture: System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+            var memoryDataResult = GetAllWithCacheAsync(
+                queryAction: DbSet
+                    .IncludeChildEntities(DefaultInclude)
+                    .Where(fe => fe.ParentDirectoryId == null
+                        && fe.LC_DirectoryFullPath.StartsWith(pathFullName)
+                        && exclude.All(ef => !EF.Functions.Collate(fe.LC_DirectoryFullPath, "NOCASE").Contains(ef)))
+                    .OrderEntitiesByDefault(DefaultOrderBy),
+                cacheKey: GetCacheKey<DirectoryEntity[]>(excludeFolders.Select(static (ed) => ed.ToString()).Union([pathFullName])),
+                cacheDuration: defaultCacheDuration,
                 useCachedResult: useCachedResult
                 );
             return memoryDataResult;
@@ -57,23 +74,22 @@ namespace DLNAServer.Database.Repositories
         {
             var memoryDataResult = GetAllWithCacheAsync(
                 queryAction: DbSet
-                    .OrderEntitiesByDefault(DefaultOrderBy)
                     .IncludeChildEntities(DefaultInclude)
-                    .Where(d => d.Depth == depth),
+                    .Where(d => d.Depth == depth)
+                    .OrderEntitiesByDefault(DefaultOrderBy),
                 cacheKey: GetCacheKey<DirectoryEntity[]>([depth.ToString()]),
                 cacheDuration: defaultCacheDuration,
                 useCachedResult: useCachedResult
                 );
             return memoryDataResult;
-
         }
         public Task<ReadOnlyMemory<DirectoryEntity>> GetAllByDirectoryDepthAsync(int depth, int skip, int take, bool useCachedResult = true)
         {
             var memoryDataResult = GetAllWithCacheAsync(
                 queryAction: DbSet
-                    .OrderEntitiesByDefault(DefaultOrderBy)
                     .IncludeChildEntities(DefaultInclude)
-                    .Where(d => d.Depth == depth),
+                    .Where(d => d.Depth == depth)
+                    .OrderEntitiesByDefault(DefaultOrderBy),
                 cacheKey: GetCacheKey<DirectoryEntity[]>([depth.ToString(), skip.ToString(), take.ToString()]),
                 cacheDuration: defaultCacheDuration,
                 useCachedResult: useCachedResult
@@ -85,10 +101,10 @@ namespace DLNAServer.Database.Repositories
             pathFullName = pathFullName.ToLower(culture: System.Globalization.CultureInfo.InvariantCulture);
             var memoryDataResult = GetAllWithCacheAsync(
                 queryAction: DbSet
-                    .OrderEntitiesByDefault(DefaultOrderBy)
                     .IncludeChildEntities(DefaultInclude)
                     .Where(d => d.LC_DirectoryFullPath == pathFullName
-                        || d.LC_DirectoryFullPath.StartsWith(pathFullName + Path.DirectorySeparatorChar)),
+                        || d.LC_DirectoryFullPath.StartsWith(pathFullName + Path.DirectorySeparatorChar))
+                    .OrderEntitiesByDefault(DefaultOrderBy),
                 cacheKey: GetCacheKey<DirectoryEntity[]>([pathFullName]),
                 cacheDuration: defaultCacheDuration,
                 useCachedResult: useCachedResult
@@ -100,10 +116,10 @@ namespace DLNAServer.Database.Repositories
             pathFullNames = pathFullNames.Select(static (p) => p.ToLower(culture: System.Globalization.CultureInfo.InvariantCulture)).ToArray();
             var memoryDataResult = GetAllWithCacheAsync(
                 queryAction: DbSet
-                    .OrderEntitiesByDefault(DefaultOrderBy)
                     .IncludeChildEntities(DefaultInclude)
                     .Where(d => pathFullNames.Any(p => p == d.LC_DirectoryFullPath)
-                        || pathFullNames.Any(p => d.LC_DirectoryFullPath.StartsWith(p + Path.DirectorySeparatorChar))),
+                        || pathFullNames.Any(p => d.LC_DirectoryFullPath.StartsWith(p + Path.DirectorySeparatorChar)))
+                    .OrderEntitiesByDefault(DefaultOrderBy),
                 cacheKey: GetCacheKey<DirectoryEntity[]>(pathFullNames),
                 cacheDuration: defaultCacheDuration,
                 useCachedResult: useCachedResult
@@ -116,14 +132,14 @@ namespace DLNAServer.Database.Repositories
             var memoryDataResult = GetAllWithCacheAsync(
                 queryAction: asNoTracking
                     ? DbSet
-                        .OrderEntitiesByDefault(DefaultOrderBy)
                         .IncludeChildEntities(DefaultInclude)
                         .AsNoTracking()
                         .Where(d => pathFullNames.Any(p => p == d.LC_DirectoryFullPath))
-                    : DbSet
                         .OrderEntitiesByDefault(DefaultOrderBy)
+                    : DbSet
                         .IncludeChildEntities(DefaultInclude)
-                        .Where(d => pathFullNames.Any(p => p == d.LC_DirectoryFullPath)),
+                        .Where(d => pathFullNames.Any(p => p == d.LC_DirectoryFullPath))
+                        .OrderEntitiesByDefault(DefaultOrderBy),
                 cacheKey: GetCacheKey<DirectoryEntity[]>(pathFullNames),
                 cacheDuration: defaultCacheDuration,
                 useCachedResult: useCachedResult

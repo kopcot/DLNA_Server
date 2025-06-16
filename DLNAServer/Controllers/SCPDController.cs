@@ -12,17 +12,16 @@ namespace DLNAServer.Controllers
     /// </summary>
     [Route("[controller]")]
     [ApiController]
-    public partial class SCPDController : Controller
+    public partial class SCPDController : ControllerBase
     {
         private readonly ILogger<SCPDController> _logger;
-        private readonly Lazy<IFileMemoryCacheManager> _fileMemoryCacheLazy;
-        private IFileMemoryCacheManager FileMemoryCacheManager => _fileMemoryCacheLazy.Value;
+        private readonly IFileMemoryCacheManager FileMemoryCacheManager;
         public SCPDController(
             ILogger<SCPDController> logger,
-            Lazy<IFileMemoryCacheManager> fileMemoryCacheLazy)
+            IFileMemoryCacheManager fileMemoryCache)
         {
             _logger = logger;
-            _fileMemoryCacheLazy = fileMemoryCacheLazy;
+            FileMemoryCacheManager = fileMemoryCache;
         }
         [HttpGet("{fileName}")]
         public async Task<IActionResult> GetResourceFileSCPD([FromRoute] string fileName)

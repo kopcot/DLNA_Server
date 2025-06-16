@@ -12,32 +12,31 @@ namespace DLNAServer.Controllers.Media
 {
     [Route("[controller]")]
     [ApiController]
-    public partial class FileServerController : Controller
+    public partial class FileServerController : ControllerBase
     {
         private readonly ILogger<FileServerController> _logger;
         private readonly ServerConfig _serverConfig;
         private readonly Lazy<IFileRepository> _fileRepositoryLazy;
         private readonly Lazy<IThumbnailRepository> _thumbnailRepositoryLazy;
         private readonly Lazy<IThumbnailDataRepository> _thumbnailDataRepositoryLazy;
-        private readonly Lazy<IFileMemoryCacheManager> _fileMemoryCacheLazy;
+        private readonly IFileMemoryCacheManager FileMemoryCache;
         private IFileRepository FileRepository => _fileRepositoryLazy.Value;
         private IThumbnailRepository ThumbnailRepository => _thumbnailRepositoryLazy.Value;
         private IThumbnailDataRepository ThumbnailDataRepository => _thumbnailDataRepositoryLazy.Value;
-        private IFileMemoryCacheManager FileMemoryCache => _fileMemoryCacheLazy.Value;
         public FileServerController(
             ILogger<FileServerController> logger,
             ServerConfig serverConfig,
             Lazy<IFileRepository> fileRepositoryLazy,
             Lazy<IThumbnailRepository> thumbnailRepositoryLazy,
             Lazy<IThumbnailDataRepository> thumbnailDataRepositoryLazy,
-            Lazy<IFileMemoryCacheManager> fileMemoryCacheLazy)
+            IFileMemoryCacheManager fileMemoryCache)
         {
             _logger = logger;
             _serverConfig = serverConfig;
             _fileRepositoryLazy = fileRepositoryLazy;
             _thumbnailRepositoryLazy = thumbnailRepositoryLazy;
             _thumbnailDataRepositoryLazy = thumbnailDataRepositoryLazy;
-            _fileMemoryCacheLazy = fileMemoryCacheLazy;
+            FileMemoryCache = fileMemoryCache;
         }
         [HttpGet("file/{fileGuid}")]
         public async Task<IActionResult> GetMediaFileAsync([FromRoute] string fileGuid)

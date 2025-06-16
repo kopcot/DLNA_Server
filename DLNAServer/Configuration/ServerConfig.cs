@@ -86,6 +86,8 @@ namespace DLNAServer.Configuration
         public ushort MaxSizeOfFileForUseMemoryCacheInMBytes { get; set; } = 512;
         public uint StoreFileInMemoryCacheAfterLoadInMinute { get; set; } = 10;
         public uint CountOfFilesByLastAddedToDb { get; set; } = 30;
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        public bool UseFileCreationDateTimeAsCreatedInDatabase { get; set; } = false;
         public Dictionary<string, KeyValuePair<DlnaMime, string?>> MediaFileExtensions { get; set; } = new Dictionary<string, KeyValuePair<DlnaMime, string?>>()
             {
                 {".mp4",  new KeyValuePair<DlnaMime, string?>(DlnaMime.VideoMp4,            DlnaMime.VideoMp4.ToMainProfileNameString()         )},

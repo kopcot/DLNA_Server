@@ -47,26 +47,25 @@ namespace DLNAServer.Features.FileWatcher
             // cannot be done, for Linux it is different file if it is .jpg, .JPG or .Jpg
             //ServerConfig.Extensions.ToList().ForEach(ex => watcher.Filters.Add("*" + ex.Key)); 
 
-
-            watcher.Created += static (sender, args) => _fileEventQueue.Enqueue((
+            watcher.Created += static (_, args) => _fileEventQueue.Enqueue((
                 fileFullPath: args.FullPath,
                 fileFullPathOld: null,
                 changeType: WatcherChangeTypes.Created,
                 eventTimeUTC: DateTime.UtcNow
                 ));
-            watcher.Changed += static (sender, args) => _fileEventQueue.Enqueue((
+            watcher.Changed += static (_, args) => _fileEventQueue.Enqueue((
                 fileFullPath: args.FullPath,
                 fileFullPathOld: null,
                 changeType: WatcherChangeTypes.Changed,
                 eventTimeUTC: DateTime.UtcNow
                 ));
-            watcher.Renamed += static (sender, args) => _fileEventQueue.Enqueue((
+            watcher.Renamed += static (_, args) => _fileEventQueue.Enqueue((
                 fileFullPath: args.FullPath,
                 fileFullPathOld: args.OldFullPath,
                 changeType: WatcherChangeTypes.Renamed,
                 eventTimeUTC: DateTime.UtcNow
                 ));
-            watcher.Deleted += static (sender, args) => _fileEventQueue.Enqueue((
+            watcher.Deleted += static (_, args) => _fileEventQueue.Enqueue((
                 fileFullPath: args.FullPath,
                 fileFullPathOld: null,
                 changeType: WatcherChangeTypes.Deleted,
@@ -101,6 +100,8 @@ namespace DLNAServer.Features.FileWatcher
             }
 
             _fileSystemWatchers.Clear();
+
+            _fileEventQueue.Clear();
 
             return Task.CompletedTask;
         }
